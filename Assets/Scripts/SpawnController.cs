@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class SpawnController : MonoBehaviour
 {
-    [Range(0, 100)]
+    [Range(0, 10000)]
     public int spawnedEntities = 0;
 
     List<GameObject> entities = new List<GameObject>();
@@ -17,6 +17,17 @@ public class SpawnController : MonoBehaviour
         entities.Add(entity);
     }
 
+    private void Update()
+    {
+        if (entities.Count < spawnedEntities)
+        {
+            SpawnEntity();
+        }
+        else if (spawnedEntities < entities.Count)
+        {
+            RemoveEntity();
+        }
+    }
     private void RemoveEntity()
     {
         List<GameObject> newList = new List<GameObject>(entities);
