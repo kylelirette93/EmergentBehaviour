@@ -47,6 +47,7 @@ public class Grid : MonoBehaviour
         if (!cells.ContainsKey(entityPosition))
         {
             cells.Add(entityPosition, new List<Entity>());
+            Debug.Log("Added new cell at position: " + entityPosition);
         }
     }
 
@@ -67,7 +68,7 @@ public class Grid : MonoBehaviour
             {
                 if (x == 0 && y == 0) continue;
                 Vector2Int neighbourCell = GetCell(entity.transform.position) + new Vector2Int(x, y);
-                if (cells.ContainsKey(neighbourCell))
+                if (!cells.ContainsKey(neighbourCell))
                 {
                     List<Entity> neighbours = cells[neighbourCell];
                     foreach (var neighbour in neighbours)
