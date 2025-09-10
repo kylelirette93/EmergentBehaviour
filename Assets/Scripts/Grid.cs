@@ -40,53 +40,75 @@ public class Grid : MonoBehaviour
     /// <param name="entity">The entity being passed to the grid.</param>
     public void UpdateEntity(Entity entity)
     {
-        RemoveEntity(entity);
         // Get cell position based on entity's position.
         Vector2Int entityPosition = GetCell(entity.transform.position);
         // Check if the cell exists in dictioanry.
-        if (!cells.ContainsKey(entityPosition))
+        if (cells.ContainsKey(entityPosition))
         {
-            cells.Add(entityPosition, new List<Entity>());
+            // If it does add the entity to that cell.
+            cells[entityPosition].Add(entity);
             Debug.Log("Added new cell at position: " + entityPosition);
+        }
+        else
+        {
+            // If cell doesn't exist, create it.
+            cells.Add(entityPosition, new List<Entity>());
         }
     }
 
     public void RemoveEntity(Entity entity)
     {
+        // Remove an entity based on the position on grid.
         Vector2Int entityPosition = GetCell(entity.transform.position);
         if (cells.ContainsKey(entityPosition))
         {
-            cells.Remove(entityPosition);
+            cells[entityPosition].Remove(entity);
         }
     }
 
     public void CheckNeighbours(Entity entity, float visionRadius)
     {
+        int neighbourCount = 0;
+        Vector3 totalAlignment = Vector3.zero;
+        Vector3 totalCohesion = Vector3.zero;
+        Vector3 totalSeperation = Vector3.zero;
+
         for (int y = -1; y <= 1; y++)
         {
             for (int x = -1; x <= 1; x++)
             {
-                if (x == 0 && y == 0) continue;
+                if (x == 0 && y == 0) continue; // skip self.
                 Vector2Int neighbourCell = GetCell(entity.transform.position) + new Vector2Int(x, y);
-                if (!cells.ContainsKey(neighbourCell))
+                if (cells.ContainsKey(neighbourCell))
                 {
                     List<Entity> neighbours = cells[neighbourCell];
                     foreach (var neighbour in neighbours)
                     {
-                        // Get sum of entities positions.
-
+                        if (entity == neighbour) continue; // skip self.
                         float distance = Vector2.Distance(entity.transform.position, neighbour.transform.position);
                         if (distance <= visionRadius)
                         {
-                            //entity.ApplyCohesion(neighbour);
-                            //entity.ApplySeperation(neighbour);
-                            entity.ApplyAlignment(neighbour.GetAlignment());
-                            break;
-                            // Process neighbour entity.
+                            neighbourCount++;
+                            // Calculate vectors.
+                            totalAlignment += neighbour.GetAlignment();
+                            totalCohesion += neighbour.transform.position;
+                            totalSeperation += (entity.transform.position - neighbour.transform.position) / distance;
+                            
                         }
                     }
                 }
             }
+        }
+        if (neighbourCount > 0)
+        {
+            // Average vectors by amount of neighbours.
+            totalAlignment /= neighbourCount;
+            totalCohesion /= neighbourCount;
+
+            // Apply rules to boids.
+            entity.ApplyAlignment(totalAlignment);
+            entity.ApplyCohesion(totalCohesion);
+            entity.ApplySeperation(totalSeperation);
         }
     }
 

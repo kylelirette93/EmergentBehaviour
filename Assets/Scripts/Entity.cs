@@ -10,9 +10,9 @@ public class Entity : MonoBehaviour
     [SerializeField] float visionRadius = 1.3f;
 
     // Vectors for boids simulation.
-    Vector2 alignmentVector = Vector2.zero;
-    Vector2 seperationVector = Vector2.zero;
-    Vector2 cohesionVector = Vector2.zero;
+    Vector3 alignmentVector = Vector3.zero;
+    Vector3 seperationVector = Vector3.zero;
+    Vector3 cohesionVector = Vector3.zero;
 
     public Grid grid;
 
@@ -25,9 +25,21 @@ public class Entity : MonoBehaviour
     private void Update()
     {
         if (randomDirection != Vector3.zero)
-        {   
-            // Apply random direction to the entitys position.
-            transform.position += randomDirection.normalized * movementSpeed * Time.deltaTime;
+        {
+            // Reset vector at the start of each frame.
+            alignmentVector = Vector3.zero;
+            seperationVector = Vector3.zero;
+            cohesionVector = Vector3.zero;
+
+            // Check neighbours using this entity's vision radius.
+            grid.CheckNeighbours(this, visionRadius);
+
+            // Apply vectors to random direction and normalize.
+            randomDirection = (randomDirection + alignmentVector + cohesionVector + seperationVector).normalized;
+
+            // Apply movement to boid.
+            transform.position += randomDirection * movementSpeed * Time.deltaTime;
+
             // Wrap position around screen edges.
             Vector3 newPosition = transform.position;
             if (newPosition.x > 9f) newPosition.x = -9f;
@@ -38,35 +50,33 @@ public class Entity : MonoBehaviour
            
             // Get the angle in radians based on direction and convert to degree float value.
             float angle = Mathf.Atan2(randomDirection.y, randomDirection.x) * Mathf.Rad2Deg;
+
             // Converts float value to quaternion and apply to object's forward vector.
             transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
+
+            // Update the entity's position on the grid.
             grid.UpdateEntity(this);
-            grid.CheckNeighbours(this, visionRadius);
         }
     }
 
     public Vector3 GetAlignment()
     {
-        return Vector3.forward;
+        return randomDirection;
     }
     public void ApplyAlignment(Vector3 alignmentVector)
     {
         // Apply alignment vector to random direction.
-        randomDirection = alignmentVector;
+        this.alignmentVector += alignmentVector;
     }
 
-    public void ApplySeperation(Entity entity)
+    public void ApplySeperation(Vector3 seperationVector)
     {
-        // Apply seperation based on entity's position.
-        Vector3 directionFromEntity = transform.position - entity.transform.position;
-        randomDirection += directionFromEntity.normalized;
+        this.seperationVector += seperationVector;
     }
 
-    public void ApplyCohesion(Entity entity)
+    public void ApplyCohesion(Vector3 cohesionVector)
     {
-        // Apply cohesion based on entity's position.
-        Vector3 directionToEntity = entity.transform.position - transform.position;
-        randomDirection += directionToEntity.normalized;
+       this.randomDirection += cohesionVector * 0.1f;
     }
 
     private void OnDrawGizmos()

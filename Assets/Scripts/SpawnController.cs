@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class SpawnController : MonoBehaviour
 {
-    [Range(0, 10000)]
+    [Range(0, 1000)]
     public int spawnedEntities = 0;
 
     List<GameObject> entities = new List<GameObject>();
