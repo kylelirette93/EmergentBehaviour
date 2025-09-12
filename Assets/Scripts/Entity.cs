@@ -4,10 +4,10 @@ public class Entity : MonoBehaviour
 {
     // Properties for entity movement.
     Vector3 randomDirection;
-    float movementSpeed = 5f;
+    float movementSpeed = 2f;
 
     [Range(0.6f, 1.5f)]
-    [SerializeField] float visionRadius = 1.3f;
+    [SerializeField] float visionRadius = 3f;
 
     // Vectors for boids simulation.
     Vector3 alignmentVector = Vector3.zero;
@@ -34,8 +34,9 @@ public class Entity : MonoBehaviour
             // Check neighbours using this entity's vision radius.
             grid.CheckNeighbours(this, visionRadius);
 
+            Vector3 steeringVector = cohesionVector + alignmentVector + seperationVector;
             // Apply vectors to random direction and normalize.
-            randomDirection = (randomDirection + alignmentVector + cohesionVector + seperationVector).normalized;
+            randomDirection = (randomDirection + steeringVector).normalized;
 
             // Apply movement to boid.
             transform.position += randomDirection * movementSpeed * Time.deltaTime;
@@ -66,17 +67,17 @@ public class Entity : MonoBehaviour
     public void ApplyAlignment(Vector3 alignmentVector)
     {
         // Apply alignment vector to random direction.
-        this.alignmentVector += alignmentVector;
+        this.alignmentVector = alignmentVector - transform.position;
     }
 
-    public void ApplySeperation(Vector3 seperationVector)
+    public void ApplySeperation(Vector3 seperationVector, float distance)
     {
         this.seperationVector += seperationVector;
     }
 
     public void ApplyCohesion(Vector3 cohesionVector)
     {
-       this.randomDirection += cohesionVector * 0.1f;
+        randomDirection = cohesionVector - transform.position;
     }
 
     private void OnDrawGizmos()

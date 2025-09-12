@@ -72,6 +72,7 @@ public class Grid : MonoBehaviour
         Vector3 totalAlignment = Vector3.zero;
         Vector3 totalCohesion = Vector3.zero;
         Vector3 totalSeperation = Vector3.zero;
+        float distance = 0f;
 
         for (int y = -1; y <= 1; y++)
         {
@@ -85,14 +86,14 @@ public class Grid : MonoBehaviour
                     foreach (var neighbour in neighbours)
                     {
                         if (entity == neighbour) continue; // skip self.
-                        float distance = Vector2.Distance(entity.transform.position, neighbour.transform.position);
+                        distance = Vector2.Distance(entity.transform.position, neighbour.transform.position);
                         if (distance <= visionRadius)
                         {
                             neighbourCount++;
                             // Calculate vectors.
                             totalAlignment += neighbour.GetAlignment();
                             totalCohesion += neighbour.transform.position;
-                            totalSeperation += (entity.transform.position - neighbour.transform.position) / distance;
+                            totalSeperation += entity.transform.position - neighbour.transform.position;
                             
                         }
                     }
@@ -104,11 +105,12 @@ public class Grid : MonoBehaviour
             // Average vectors by amount of neighbours.
             totalAlignment /= neighbourCount;
             totalCohesion /= neighbourCount;
+            totalSeperation /= Mathf.Sqrt(distance);
 
             // Apply rules to boids.
-            entity.ApplyAlignment(totalAlignment);
             entity.ApplyCohesion(totalCohesion);
-            entity.ApplySeperation(totalSeperation);
+            entity.ApplyAlignment(totalAlignment);
+            entity.ApplySeperation(totalSeperation, distance);
         }
     }
 
