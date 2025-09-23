@@ -4,7 +4,7 @@ public class Entity : MonoBehaviour
 {
     // Properties for entity movement.
     Vector3 randomDirection;
-    float movementSpeed = 2f;
+    float movementSpeed = 5f;
 
     [Range(0.6f, 1.5f)]
     [SerializeField] float visionRadius = 3f;
@@ -34,50 +34,44 @@ public class Entity : MonoBehaviour
             // Check neighbours using this entity's vision radius.
             grid.CheckNeighbours(this, visionRadius);
 
-            Vector3 steeringVector = cohesionVector + alignmentVector + seperationVector;
-            // Apply vectors to random direction and normalize.
-            randomDirection = (randomDirection + steeringVector).normalized;
+            Vector3 steeringVector = cohesionVector * 1.0f + alignmentVector * 1.0f + seperationVector * 3.0f;
+
+            Vector3 acceleration = steeringVector;
+            randomDirection += acceleration * Time.deltaTime; 
+            randomDirection = Vector3.ClampMagnitude(randomDirection, movementSpeed);
 
             // Apply movement to boid.
-            transform.position += randomDirection * movementSpeed * Time.deltaTime;
-
-            // Wrap position around screen edges.
-            Vector3 newPosition = transform.position;
-            if (newPosition.x > 9f) newPosition.x = -9f;
-            if (newPosition.x < -9f) newPosition.x = 9f;
-            if (newPosition.y > 5f) newPosition.y = -5f;
-            if (newPosition.y < -5f) newPosition.y = 5f;
-            transform.position = newPosition;
-           
-            // Get the angle in radians based on direction and convert to degree float value.
-            float angle = Mathf.Atan2(randomDirection.y, randomDirection.x) * Mathf.Rad2Deg;
-
-            // Converts float value to quaternion and apply to object's forward vector.
-            transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
-
-            // Update the entity's position on the grid.
-            grid.UpdateEntity(this);
+            transform.position += randomDirection * Time.deltaTime;
         }
+
+        // Get the angle in radians based on direction and convert to degree float value.
+        float angle = Mathf.Atan2(randomDirection.y, randomDirection.x) * Mathf.Rad2Deg;
+
+        // Converts float value to quaternion and apply to object's forward vector.
+        transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
+
+        // Update the entity's position on the grid.
+        grid.UpdateEntity(this);
     }
 
     public Vector3 GetAlignment()
     {
-        return randomDirection;
+        return transform.forward * movementSpeed;
     }
     public void ApplyAlignment(Vector3 alignmentVector)
     {
         // Apply alignment vector to random direction.
-        this.alignmentVector = alignmentVector - transform.position;
+        this.alignmentVector += alignmentVector.normalized;
     }
 
-    public void ApplySeperation(Vector3 seperationVector, float distance)
+    public void ApplySeperation(Vector3 seperationVector)
     {
-        this.seperationVector += seperationVector;
+        this.seperationVector += seperationVector.normalized;
     }
 
     public void ApplyCohesion(Vector3 cohesionVector)
     {
-        randomDirection = cohesionVector - transform.position;
+        this.cohesionVector += cohesionVector.normalized;
     }
 
     private void OnDrawGizmos()
