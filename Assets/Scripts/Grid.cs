@@ -29,7 +29,7 @@ public class Grid : MonoBehaviour
             for (int x = 0; x < width; x++)
             {
                 // Offset cell position by grid origin.
-                Vector2Int cellPosition = GetCell(new Vector2(x + gridOrigin.x, y + gridOrigin.y));
+                Vector2Int cellPosition = GetCell(new Vector2(x + (int)gridOrigin.x, y + (int)gridOrigin.y));
                 cells.Add(cellPosition, new List<Entity>());
             }
         }
@@ -48,18 +48,19 @@ public class Grid : MonoBehaviour
         {
             if (oldCell != newCell)
             {
-                // Remove entity from old cell.
-                cells[oldCell].Remove(entity);
+                if (cells.ContainsKey(oldCell))
+                {
+                    // Remove entity from old cell.
+                    cells[oldCell].Remove(entity);
+                }
             }
         }
-        if (!cells.ContainsKey(newCell))
+        if (cells.ContainsKey(newCell))
         {
-            cells[newCell] = new List<Entity>();
-        }
-        if (!cells[newCell].Contains(entity))
-        {
-            // Add entity to new cell.
-            cells[newCell].Add(entity);
+            if (!cells[newCell].Contains(entity))
+            {
+                cells[newCell].Add(entity);
+            }
         }
 
         // Update the entity's current cell.
@@ -91,8 +92,8 @@ public class Grid : MonoBehaviour
     {
         int neighbourCount = 0;
         Vector3 totalAlignment = Vector3.zero;
-        Vector3 totalCohesion = Vector3.zero;
         Vector3 totalSeperation = Vector3.zero;
+        Vector3 centerOfMass = Vector3.zero;
         float distance = 0f;
 
         for (int y = -1; y <= 1; y++)
@@ -107,13 +108,17 @@ public class Grid : MonoBehaviour
                     {
                         if (entity == neighbour) continue; 
                         distance = Vector2.Distance(entity.transform.position, neighbour.transform.position);
-                        if (distance <= visionRadius)
+                        if (distance < visionRadius)
                         {
                             neighbourCount++;
-                            // Calculate vectors.
+
+                            // Average neighbours velocities.
                             totalAlignment += neighbour.GetAlignment();
-                            totalCohesion += neighbour.transform.position;
-                            totalSeperation += entity.transform.position - neighbour.transform.position;
+
+                            centerOfMass += neighbour.transform.position;
+
+                            // Inverse square law so closer boids have more influence.
+                            totalSeperation += (entity.transform.position - neighbour.transform.position);
                             
                         }
                     }
@@ -122,13 +127,15 @@ public class Grid : MonoBehaviour
         }
         if (neighbourCount > 0)
         {
-            // Average vectors by amount of neighbours.
+            // Direction towards the center of mass.
+            centerOfMass /= neighbourCount;
+            Vector3 cohesionDirection = (centerOfMass - entity.transform.position);
+
+            // Average alignment of flock.
             totalAlignment /= neighbourCount;
-            totalCohesion /= neighbourCount;
-            totalSeperation /= neighbourCount;
 
             // Apply rules to boids.
-            entity.ApplyCohesion(totalCohesion);
+            entity.ApplyCohesion(cohesionDirection);
             entity.ApplyAlignment(totalAlignment);
             entity.ApplySeperation(totalSeperation);
         }
@@ -150,9 +157,9 @@ public class Grid : MonoBehaviour
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.green;
-        foreach (var cell in cells)
+        foreach (var cell in currentCell)
         {
-            Vector3 cellPosition = new Vector3(cell.Key.x * cellSize, cell.Key.y * cellSize, 0);
+            Vector3 cellPosition = new Vector3(cell.Value.x * cellSize, cell.Value.y * cellSize, 0);
             Gizmos.DrawWireCube(cellPosition, new Vector3(cellSize, cellSize, 0));
         }
     }

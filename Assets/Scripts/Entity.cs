@@ -3,52 +3,62 @@ using UnityEngine;
 public class Entity : MonoBehaviour
 {
     // Properties for entity movement.
-    Vector3 randomDirection;
-    float movementSpeed = 5f;
+    [Header("Movement Settings")]
+    [SerializeField] float maxSpeed = 2f;
+    [SerializeField] float maxForce = 5f;
+    [SerializeField] float rotationSpeed = 5f;
 
-    [Range(0.6f, 1.5f)]
-    [SerializeField] float visionRadius = 3f;
+    [Header("Boid Weights")]
+    [SerializeField] float cohesionWeight = 2f;
+    [SerializeField] float alignmentWeight = 1f;
+    [SerializeField] float seperationWeight = 1f;
 
-    // Vectors for boids simulation.
-    Vector3 alignmentVector = Vector3.zero;
-    Vector3 seperationVector = Vector3.zero;
-    Vector3 cohesionVector = Vector3.zero;
+    [Header("Vision")]
+    [Range(0.5f, 2f)]
+    [SerializeField] float visionRadius = 1.5f;
+
+    Vector3 velocity;
+    Vector3 acceleration;
+
+    float screenX;
+    float screenY;
 
     public Grid grid;
 
     private void Start()
     {
-        randomDirection = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), 0);
+        Camera cam = Camera.main;
+        screenY = cam.orthographicSize;
+        screenX = cam.aspect * cam.orthographicSize;
+
+        velocity = Random.insideUnitCircle.normalized * maxSpeed;
         grid = FindObjectOfType<Grid>();
     }
 
     private void Update()
     {
-        if (randomDirection != Vector3.zero)
+        acceleration = Vector3.zero;
+
+        // Apply boundary rules.
+        ApplyBoundaryRule();
+
+        // Check neighbours to apply rules.
+        grid.CheckNeighbours(this, visionRadius);
+
+        // Update the boids velocity.
+        velocity += acceleration * Time.deltaTime;
+        velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+
+        // Move the boid based on velocity.
+        transform.position += velocity * Time.deltaTime;
+
+        // Rotate entity to face direction its moving.
+        if (velocity.sqrMagnitude > 0.01f)
         {
-            // Reset vector at the start of each frame.
-            alignmentVector = Vector3.zero;
-            seperationVector = Vector3.zero;
-            cohesionVector = Vector3.zero;
-
-            // Check neighbours using this entity's vision radius.
-            grid.CheckNeighbours(this, visionRadius);
-
-            Vector3 steeringVector = cohesionVector * 1.0f + alignmentVector * 1.0f + seperationVector * 3.0f;
-
-            Vector3 acceleration = steeringVector;
-            randomDirection += acceleration * Time.deltaTime; 
-            randomDirection = Vector3.ClampMagnitude(randomDirection, movementSpeed);
-
-            // Apply movement to boid.
-            transform.position += randomDirection * Time.deltaTime;
+            float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
+            Quaternion targetRotation = Quaternion.Euler(0, 0, angle - 90f);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
-
-        // Get the angle in radians based on direction and convert to degree float value.
-        float angle = Mathf.Atan2(randomDirection.y, randomDirection.x) * Mathf.Rad2Deg;
-
-        // Converts float value to quaternion and apply to object's forward vector.
-        transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
 
         // Update the entity's position on the grid.
         grid.UpdateEntity(this);
@@ -56,22 +66,65 @@ public class Entity : MonoBehaviour
 
     public Vector3 GetAlignment()
     {
-        return transform.forward * movementSpeed;
+        return velocity;
     }
-    public void ApplyAlignment(Vector3 alignmentVector)
+    public void ApplyAlignment(Vector3 averageVelocity)
     {
-        // Apply alignment vector to random direction.
-        this.alignmentVector += alignmentVector.normalized;
+        if (averageVelocity != Vector3.zero)
+        {
+            Vector3 steeringVector = averageVelocity.normalized * maxSpeed - velocity;
+            steeringVector = Vector3.ClampMagnitude(steeringVector, maxForce);
+            acceleration += steeringVector * alignmentWeight;
+        }
     }
 
-    public void ApplySeperation(Vector3 seperationVector)
+    public void ApplySeperation(Vector3 averageAvoidance)
     {
-        this.seperationVector += seperationVector.normalized;
+        if (averageAvoidance != Vector3.zero)
+        {
+            Vector3 steeringVector = averageAvoidance.normalized * maxSpeed - velocity;
+            steeringVector = Vector3.ClampMagnitude(steeringVector, maxForce);
+            acceleration += steeringVector * seperationWeight;
+        }
     }
 
-    public void ApplyCohesion(Vector3 cohesionVector)
+    public void ApplyCohesion(Vector3 averagePosition)
     {
-        this.cohesionVector += cohesionVector.normalized;
+        Vector3 targetPosition = averagePosition - transform.position;
+        if (targetPosition != Vector3.zero)
+        {
+            Vector3 steeringVector = targetPosition.normalized * maxSpeed - velocity;
+            steeringVector = Vector3.ClampMagnitude(steeringVector, maxForce);
+            acceleration += steeringVector * cohesionWeight;
+        }
+    }
+
+    public void ApplyBoundaryRule()
+    {
+        Vector3 newPosition = transform.position;
+        Vector3 avoidance = Vector3.zero;
+        float boundaryThreshold = 2f;
+        if (newPosition.x > screenX - boundaryThreshold)
+        {
+            avoidance.x -= 1;
+        }
+        if (newPosition.x < -screenX + boundaryThreshold)
+        {
+            avoidance.x += 1;
+        }
+        if (newPosition.y > screenY - boundaryThreshold)
+        {
+            avoidance.y -= 1;
+        }
+        if (newPosition.y < -screenY + boundaryThreshold)
+        {
+            avoidance.y += 1;
+        }
+        if (avoidance != Vector3.zero)
+        {
+            Vector3 steeringVector = avoidance.normalized * maxSpeed - velocity;
+            acceleration += Vector3.ClampMagnitude(steeringVector, maxForce) * 1f;
+        }
     }
 
     private void OnDrawGizmos()
