@@ -45,13 +45,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 573a372c81ac36342832a830ede186a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxSpeed: 8
-  maxForce: 3
+  maxSpeed: 5
+  maxForce: 5
   rotationSpeed: 5
-  cohesionWeight: 1
-  alignmentWeight: 1
-  seperationWeight: 3
-  visionRadius: 0.976
+  cohesionWeight: 0.8
+  alignmentWeight: 0.9
+  seperationWeight: 1
+  influenceRadius: 1.04
   grid: {fileID: 0}
 --- !u!212 &4693518771891612945
 SpriteRenderer:

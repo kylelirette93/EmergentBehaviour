@@ -6,15 +6,19 @@ using UnityEngine;
 /// </summary>
 public class Grid : MonoBehaviour
 {
-    // Dictionary holding cells in grid based on their position.
+    // Dictionary holding list of entities in each cell on grid.
     Dictionary<Vector2Int, List<Entity>> cells = new Dictionary<Vector2Int, List<Entity>>();
+    // Dictionary holding current cell position of each entity.
     Dictionary<Entity, Vector2Int> currentCell = new Dictionary<Entity, Vector2Int>();
+
     int cellSize = 1;
     Vector2 gridOrigin = new Vector2(-8, -4);
+    int gridHeight = 18;
+    int gridWidth = 12;
 
     private void Start()
     {
-        CreateGrid(18, 12);
+        CreateGrid(gridHeight, gridWidth);
     }
 
     /// <summary>
@@ -36,14 +40,14 @@ public class Grid : MonoBehaviour
     }
 
     /// <summary>
-    /// Add's an entity to the grid based on position.
+    /// Update an entity in grid based on its current position.
     /// </summary>
     /// <param name="entity">The entity being passed to the grid.</param>
     public void UpdateEntity(Entity entity)
     {
         Vector2Int newCell = GetCell(entity.transform.position);
 
-        // Check if the old cell contains entity and remove it.
+        // If the old cell isnt the current cell position, remove it from grid.
         if (currentCell.TryGetValue(entity, out Vector2Int oldCell))
         {
             if (oldCell != newCell)
@@ -55,15 +59,17 @@ public class Grid : MonoBehaviour
                 }
             }
         }
+        // Add entity to grid based on current cell position.
         if (cells.ContainsKey(newCell))
         {
+            // Avoid adding twice.
             if (!cells[newCell].Contains(entity))
             {
                 cells[newCell].Add(entity);
             }
         }
 
-        // Update the entity's current cell.
+        // Add the entitys current cell position.
         currentCell[entity] = newCell;
     }
 
@@ -84,42 +90,58 @@ public class Grid : MonoBehaviour
     }
 
     /// <summary>
-    /// Check for neighbours and make calculations based on boids.
+    /// Check for neighbours and make calculations based on neighbouring boids.
     /// </summary>
     /// <param name="entity"></param>
-    /// <param name="visionRadius"></param>
-    public void CheckNeighbours(Entity entity, float visionRadius)
+    /// <param name="influenceRadius">The radius of influence. Determines if an entity is influenced by a neighbour.</param>
+    public void CheckNeighbours(Entity entity, float influenceRadius)
     {
         int neighbourCount = 0;
         Vector3 totalAlignment = Vector3.zero;
         Vector3 totalSeperation = Vector3.zero;
         Vector3 centerOfMass = Vector3.zero;
-        float distance = 0f;
+        float distanceFromNeighbour = 0f;
 
         for (int y = -1; y <= 1; y++)
         {
             for (int x = -1; x <= 1; x++)
             {
+                // Check all neighbouring cells, including current.
                 Vector2Int neighbourCell = GetCell(entity.transform.position) + new Vector2Int(x, y);
                 if (cells.ContainsKey(neighbourCell))
                 {
                     List<Entity> neighbours = cells[neighbourCell];
+
                     foreach (var neighbour in neighbours)
                     {
-                        if (entity == neighbour) continue; 
-                        distance = Vector2.Distance(entity.transform.position, neighbour.transform.position);
-                        if (distance < visionRadius)
+                        // We're not checking neighbours here.
+                        if (entity == neighbour) continue;
+
+                        if (entity != null && neighbour == null) continue;
+
+                        distanceFromNeighbour = Vector2.Distance(entity.transform.position, neighbour.transform.position);
+                        Vector3 toNeighbour = neighbour.transform.position - entity.transform.position;
+                        Vector3 forward = entity.transform.up;
+                        float angle = Vector3.Angle(forward, toNeighbour);
+
+                        if (distanceFromNeighbour < influenceRadius && angle < 120f)
                         {
                             neighbourCount++;
+                            //Debug.Log("Entity at: " + GetCell(entity.transform.position) + "has " + neighbourCount + "neighbours.");
 
-                            // Average neighbours velocities.
+                            // Add together neighbours velocity.
                             totalAlignment += neighbour.GetAlignment();
 
+                            // Add together neighbours positions.
                             centerOfMass += neighbour.transform.position;
 
-                            // Inverse square law so closer boids have more influence.
-                            totalSeperation += (entity.transform.position - neighbour.transform.position);
-                            
+                            // Total seperation from neighbours.
+                            Vector3 seperationVector = entity.transform.position - neighbour.transform.position;
+                            if (seperationVector.sqrMagnitude > 0.01f)
+                            {
+                                // Seperate based on distance from neighbour.
+                                totalSeperation += seperationVector.normalized / distanceFromNeighbour;
+                            }
                         }
                     }
                 }
@@ -127,21 +149,19 @@ public class Grid : MonoBehaviour
         }
         if (neighbourCount > 0)
         {
-            // Direction towards the center of mass.
+            // Calculate average center of mass of flock.
             centerOfMass /= neighbourCount;
-            Vector3 cohesionDirection = (centerOfMass - entity.transform.position);
 
-            // Average alignment of flock.
+            // Calculate average alignment of flock.
             totalAlignment /= neighbourCount;
 
-            // Apply rules to boids.
-            entity.ApplyCohesion(cohesionDirection);
+            // Apply rules to the boid.
+            entity.ApplyCohesion(centerOfMass);
             entity.ApplyAlignment(totalAlignment);
             entity.ApplySeperation(totalSeperation);
+
         }
     }
-
-    
 
     /// <summary>
     /// Converts a vector2 position to a vector2 int(cell position).
