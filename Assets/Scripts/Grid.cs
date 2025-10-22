@@ -139,8 +139,9 @@ public class Grid : MonoBehaviour
                             Vector3 seperationVector = entity.transform.position - neighbour.transform.position;
                             if (seperationVector.sqrMagnitude > 0.01f)
                             {
-                                // Seperate based on distance from neighbour.
-                                totalSeperation += seperationVector.normalized / distanceFromNeighbour;
+                                // Seperate based on distance from neighbour. Square the distance to increase effect when closer.
+                                float seperationDistance = Mathf.Max(distanceFromNeighbour, 0.3f);
+                                totalSeperation += seperationVector.normalized / seperationDistance;
                             }
                         }
                     }

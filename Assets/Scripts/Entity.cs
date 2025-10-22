@@ -8,6 +8,11 @@ public class Entity : MonoBehaviour
     [SerializeField] float maxForce = 5f;
     [SerializeField] float rotationSpeed = 5f;
 
+    [Header("Properties for boid behaviour")]
+    public float CohesionWeight { get { return cohesionWeight; } set { cohesionWeight = value; } }
+    public float SeperationWeight { get { return seperationWeight; } set { seperationWeight = value; } }
+    public float AlignmentWeight { get { return alignmentWeight; } set { alignmentWeight = value; } }
+
     [Header("Boid Weights")]
     [SerializeField] float cohesionWeight = 2f;
     [SerializeField] float alignmentWeight = 1f;
@@ -52,6 +57,7 @@ public class Entity : MonoBehaviour
 
         // Update the boids velocity.
         velocity += acceleration * Time.deltaTime;
+
         velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
 
         // Move the boid based on velocity.
@@ -62,7 +68,7 @@ public class Entity : MonoBehaviour
         {
             float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
             Quaternion targetRotation = Quaternion.Euler(0, 0, angle - 90f);
-            transform.rotation = targetRotation;
+            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, 0.1f);
         }
 
         // Update the entity's position on the grid.
@@ -86,7 +92,8 @@ public class Entity : MonoBehaviour
     {
         if (averageVelocity != Vector3.zero)
         {
-            Vector3 steeringVector = averageVelocity * maxSpeed - velocity;
+            Vector3 desiredVelocity = averageVelocity.normalized * maxSpeed;
+            Vector3 steeringVector = desiredVelocity - velocity;
             steeringVector = Vector3.ClampMagnitude(steeringVector, maxForce);
             acceleration += steeringVector * alignmentWeight;
         }

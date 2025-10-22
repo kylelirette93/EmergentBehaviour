@@ -15,7 +15,11 @@ public class SpawnController : MonoBehaviour
     List<GameObject> entities = new List<GameObject>();
     public GameObject birdPrefab;
 
-    
+    [SerializeField] Slider cohesionSlider;
+    [SerializeField] Slider seperationSlider;
+    [SerializeField] Slider alignmentSlider;
+
+
     private void Start()
     {
         // Add listener to update target spawn count when value changes.
@@ -76,5 +80,32 @@ public class SpawnController : MonoBehaviour
         entities.RemoveAt(lastIndex);
 
         UpdateSpawnText();
+    }
+
+    public void AdjustCohesion()
+    {
+        foreach (GameObject entity in entities)
+        {
+            Entity boid = entity.GetComponent<Entity>();
+            boid.CohesionWeight = cohesionSlider.value;
+        }
+    }
+
+    public void AdjustSeperation()
+    {
+        foreach (GameObject entity in entities)
+        {
+            Entity boid = entity.GetComponent<Entity>();
+            boid.SeperationWeight = seperationSlider.value;
+        }
+    }
+
+    public void AdjustAlignment()
+    {
+        foreach (GameObject entity in entities)
+        {
+            Entity boid = entity.GetComponent<Entity>();
+            boid.AlignmentWeight = alignmentSlider.value;
+        }
     }
 }
